@@ -1,0 +1,80 @@
+services:
+  redis:
+    image: redis:latest
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    networks:
+      - local
+  postgres:
+    image: postgres:latest
+    restart: unless-stopped
+    environment:
+      POSTGRES_PASSWORD: secret
+      POSTGRES_USER: sentry
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - local
+  web:
+    image: sentry:latest
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      SENTRY_SECRET_KEY: '${SECRET_KEY}'  # Replace with your generated secret key
+      SENTRY_DB_USER: '${SENTRY_DB_USER}'
+      SENTRY_DB_PASSWORD: '${SENTRY_DB_PASSWORD}'
+      SENTRY_DB_NAME: sentry
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_REDIS_HOST: redis
+    ports:
+      - "8080:9000"
+    command: "run web"
+    networks:
+      - local
+  cron:
+    image: sentry:latest
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      SENTRY_SECRET_KEY: '${SECRET_KEY}'  # Replace with your generated secret key
+      SENTRY_REDIS_HOST: redis
+      SENTRY_DB_PASSWORD: '${SENTRY_DB_PASSWORD}'
+      SENTRY_DB_NAME: sentry
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_USER: '${SENTRY_DB_USER}'
+    networks:
+      - local
+    command: "run cron"
+
+  worker:
+    image: sentry:latest
+    platform: linux/amd64
+    restart: unless-stopped
+    depends_on:
+      - redis
+      - postgres
+    environment:
+      SENTRY_SECRET_KEY: '${SECRET_KEY}'
+      SENTRY_REDIS_HOST: redis
+      SENTRY_DB_PASSWORD: '${SENTRY_DB_PASSWORD}'
+      SENTRY_DB_NAME: sentry
+      SENTRY_POSTGRES_HOST: postgres
+      SENTRY_DB_USER: '${SENTRY_DB_USER}'
+    networks:
+      - local
+    command: "run worker"
+
+volumes:
+  postgres-data:
+networks:
+  local:
+    driver: bridge
