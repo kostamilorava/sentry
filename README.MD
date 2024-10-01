@@ -1,7 +1,7 @@
 ## Instructions
 
 1. Generate secret key:
-    ```
+    ```shell
     docker run --rm sentry config generate-secret-key
     ```
    
